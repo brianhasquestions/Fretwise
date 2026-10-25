@@ -1,0 +1,10 @@
+{
+  "appId": "com.fretwise.app",
+  "appName": "Fretwise",
+  "webDir": "www",
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css"
+    }
+  }
+}

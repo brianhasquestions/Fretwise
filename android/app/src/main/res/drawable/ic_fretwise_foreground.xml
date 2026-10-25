@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fretwise pick logo (same shapes as the web app's logo), sized for an adaptive icon's 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="22"
+        android:translateY="22"
+        android:scaleX="2"
+        android:scaleY="2">
+        <path
+            android:fillColor="#C2410C"
+            android:pathData="M16,2C8,2 3,6 3,11c0,7 7,15 13,19 6,-4 13,-12 13,-19 0,-5 -5,-9 -13,-9z" />
+        <path
+            android:strokeColor="#FFF4EA"
+            android:strokeWidth="1.6"
+            android:strokeLineCap="round"
+            android:strokeAlpha="0.85"
+            android:pathData="M10,9h12M10,13h12M11,17h10" />
+    </group>
+</vector>

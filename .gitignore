@@ -1,0 +1,4 @@
+# Local tool settings (not part of the app)
+.claude/
+node_modules/
+www/
