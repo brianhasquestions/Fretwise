@@ -247,17 +247,51 @@ const Theory = (() => {
 
   // ---------- Scales & positional shapes ----------
 
+  const SCALE_GROUPS = [
+    { id: 'core', name: 'Major & minor' },
+    { id: 'pent', name: 'Pentatonic & blues' },
+    { id: 'modes', name: 'Modes' },
+    { id: 'minors', name: 'Harmonic & melodic' },
+  ];
+
+  // relative: [scale with the same notes, semitones to its root]. accent: the notes that set this scale
+  // apart from its nearest parent (major or natural minor), coloured on the neck and named by accentName.
   const SCALE_TYPES = [
-    { id: 'minpent', name: 'minor pentatonic', iv: [0, 3, 5, 7, 10], minor: true, relative: ['majpent', 3] },
-    { id: 'majpent', name: 'major pentatonic', iv: [0, 2, 4, 7, 9], relative: ['minpent', 9] },
+    { id: 'major', group: 'core', name: 'major scale', iv: [0, 2, 4, 5, 7, 9, 11], relative: ['natural', 9] },
+    { id: 'natural', group: 'core', name: 'natural minor scale', iv: [0, 2, 3, 5, 7, 8, 10], minor: true, labels: { 8: '♭6' }, relative: ['major', 3], accent: [3, 8, 10], accentName: '♭3, ♭6, ♭7 (differs from major)' },
+    { id: 'minpent', group: 'pent', name: 'minor pentatonic', iv: [0, 3, 5, 7, 10], minor: true, relative: ['majpent', 3] },
+    { id: 'majpent', group: 'pent', name: 'major pentatonic', iv: [0, 2, 4, 7, 9], relative: ['minpent', 9] },
     // The blues scale is the minor pentatonic plus the ♭5 "blue note"; its boxes follow the pentatonic ones.
-    { id: 'blues', name: 'blues', iv: [0, 3, 5, 6, 7, 10], minor: true, shapeStarts: [0, 3, 5, 7, 10], blue: 6 },
+    { id: 'blues', group: 'pent', name: 'blues scale', iv: [0, 3, 5, 6, 7, 10], minor: true, shapeStarts: [0, 3, 5, 7, 10], accent: [6], accentName: 'Blue note (♭5)' },
+    { id: 'dorian', group: 'modes', name: 'Dorian mode', iv: [0, 2, 3, 5, 7, 9, 10], minor: true, relative: ['major', 10], accent: [9], accentName: 'Raised 6th (vs natural minor)' },
+    { id: 'phrygian', group: 'modes', name: 'Phrygian mode', iv: [0, 1, 3, 5, 7, 8, 10], minor: true, labels: { 8: '♭6' }, relative: ['major', 8], accent: [1], accentName: '♭2 (vs natural minor)' },
+    { id: 'lydian', group: 'modes', name: 'Lydian mode', iv: [0, 2, 4, 6, 7, 9, 11], labels: { 6: '♯4' }, relative: ['major', 7], accent: [6], accentName: '♯4 (vs major)' },
+    { id: 'mixolydian', group: 'modes', name: 'Mixolydian mode', iv: [0, 2, 4, 5, 7, 9, 10], relative: ['major', 5], accent: [10], accentName: '♭7 (vs major)' },
+    { id: 'locrian', group: 'modes', name: 'Locrian mode', iv: [0, 1, 3, 5, 6, 8, 10], minor: true, labels: { 8: '♭6' }, relative: ['major', 1], accent: [1, 6], accentName: '♭2 and ♭5 (vs natural minor)' },
+    { id: 'harmonic', group: 'minors', name: 'harmonic minor scale', iv: [0, 2, 3, 5, 7, 8, 11], minor: true, labels: { 8: '♭6' }, accent: [11], accentName: 'Raised 7th (vs natural minor)' },
+    { id: 'melodic', group: 'minors', name: 'melodic minor scale', iv: [0, 2, 3, 5, 7, 9, 11], minor: true, accent: [9, 11], accentName: 'Raised 6th and 7th (vs natural minor)' },
   ];
   // Chord types that make sense as arpeggios (a two-note power chord doesn't).
   const ARP_TYPES = CHORD_TYPES.filter(t => t.iv.length >= 3);
 
   const scaleType = id => SCALE_TYPES.find(t => t.id === id) || null;
   const scaleName = (rootPc, type) => chordRootName(rootPc, type) + ' ' + type.name;
+
+  /** The triads built on each note of a seven-note scale, spelled from the scale. */
+  function diatonicTriads(rootPc, type) {
+    if (type.iv.length !== 7) return [];
+    const tones = toneMap(rootPc, type);
+    const QUALITY = { '4,7': 'maj', '3,7': 'min', '3,6': 'dim', '4,8': 'aug' };
+    return type.iv.map((semi, i) => {
+      const third = mod(type.iv[(i + 2) % 7] - semi, 12);
+      const fifth = mod(type.iv[(i + 4) % 7] - semi, 12);
+      const id = QUALITY[`${third},${fifth}`];
+      if (!id) return null;
+      const t = chordType(id);
+      const pc = mod(rootPc + semi, 12);
+      return { semi, root: pc, type: t, name: tones.get(pc).name + t.symbol };
+    }).filter(Boolean);
+  }
 
   /** One positional shape: start on a tone on the lowest string, then walk up the tones in pitch
       order, moving to the next string whenever the next tone would sit more than `span` frets
@@ -309,12 +343,13 @@ const Theory = (() => {
     return list;
   }
 
-  /** Extended ("diagonal") pentatonic shapes: walk up the scale in pitch order, alternating 2 and 3
-      notes per string, so the hand climbs the neck through several boxes. Only patterns where no
-      string needs more than a 4-fret reach are kept — in standard tuning that's the 2-3-2-3-2-3 shape
-      from the ♭7 (A minor: 3-5 | 3-5-7 | 5-7 | 5-7-9 | 8-10 | 8-10-12) and the 3-2-3-2-3-2 shape from the ♭3. */
+  /** Shapes that climb the neck. Pentatonics alternate 2 and 3 notes per string (the extended or
+      "diagonal" shapes), keeping patterns with no more than a 4-fret reach: in standard tuning the
+      2-3-2-3-2-3 shape from the ♭7 (A minor: 3-5 | 3-5-7 | 5-7 | 5-7-9 | 8-10 | 8-10-12) and the
+      3-2-3-2-3-2 shape from the ♭3. Seven-note scales use 3 notes on every string, from each scale tone. */
   function extendedShapes(rootPc, type, maxFret = 15) {
-    if (type.iv.length !== 5) return [];
+    const nps3 = type.iv.length === 7;
+    if (!nps3 && type.iv.length !== 5) return [];
     const key = `ext|${rootPc}|${type.id}|${maxFret}`;
     if (shapeCache.has(key)) return shapeCache.get(key);
     const pcs = new Set(type.iv.map(i => mod(rootPc + i, 12)));
@@ -330,7 +365,7 @@ const Theory = (() => {
       return notes;
     };
     const shapes = [];
-    for (const counts of [[2, 3, 2, 3, 2, 3], [3, 2, 3, 2, 3, 2]]) {
+    for (const counts of nps3 ? [[3, 3, 3, 3, 3, 3]] : [[2, 3, 2, 3, 2, 3], [3, 2, 3, 2, 3, 2]]) {
       for (const iv of type.iv) {
         const base = mod(rootPc + iv - TUNING[0], 12);
         const sample = walk(base, counts);
@@ -338,7 +373,7 @@ const Theory = (() => {
           const fs = sample.filter(n => n.s === s).map(n => n.f);
           return Math.max(...fs) - Math.min(...fs);
         }));
-        if (reach > 4) continue;
+        if (reach > (nps3 ? 5 : 4)) continue;
         const placements = [];
         for (let f = base; f <= maxFret; f += 12) {
           const notes = walk(f, counts);
@@ -349,7 +384,7 @@ const Theory = (() => {
           const notes = walk(base, counts).filter(n => n.f >= 0 && n.f <= maxFret);
           if (notes.length >= 8) { placements.push(notes); truncated = true; }
         }
-        if (placements.length) shapes.push({ startIv: iv, counts, placements, extended: true, truncated });
+        if (placements.length) shapes.push({ startIv: iv, counts, placements, extended: true, nps3, truncated });
       }
     }
     shapes.sort((a, b) => Math.min(...a.placements[0].map(n => n.f)) - Math.min(...b.placements[0].map(n => n.f)));
@@ -364,8 +399,8 @@ const Theory = (() => {
   };
 
   const DEGREE_NAMES = {
-    R: 'root', '♭2': 'minor 2nd', 2: '2nd', '♭3': 'minor 3rd', 3: 'major 3rd', 4: '4th', '♭5': 'flat 5th',
-    5: '5th', '♯5': 'sharp 5th', 6: '6th', '♭7': 'minor 7th', 7: 'major 7th', '♭♭7': 'diminished 7th',
+    R: 'root', '♭2': 'minor 2nd', 2: '2nd', '♭3': 'minor 3rd', 3: 'major 3rd', 4: '4th', '♯4': 'sharp 4th', '♭5': 'flat 5th',
+    5: '5th', '♯5': 'sharp 5th', '♭6': 'minor 6th', 6: '6th', '♭7': 'minor 7th', 7: 'major 7th', '♭♭7': 'diminished 7th',
   };
   const degreeName = label => DEGREE_NAMES[label] || label;
 
@@ -453,6 +488,6 @@ const Theory = (() => {
     INTERVALS, interval, TRIAD_TYPES, INVERSIONS, STRING_SETS, stringSet, triadShapes, checkTriad,
     mod, noteName, shortName, spellings, isNatural, midiAt, pcAt, octave, midiName,
     chordType, chordName, chordRootName, chordPcs, toneMap, checkShape, findVoicings, allVoicings, fingerCount, shapeString,
-    SCALE_TYPES, ARP_TYPES, scaleType, scaleName, positionShapes, extendedShapes, fretSpan, intervalLabel, degreeName,
+    SCALE_GROUPS, SCALE_TYPES, ARP_TYPES, scaleType, scaleName, diatonicTriads, positionShapes, extendedShapes, fretSpan, intervalLabel, degreeName,
   };
 })();

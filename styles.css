@@ -582,3 +582,33 @@ legend small { color: var(--muted); font-weight: 500; }
 
 /* Progression chord cards: Roman numeral above the diagram */
 .chord-card-numeral { font-weight: 800; font-size: .95rem; color: var(--accent); line-height: 1.1; }
+
+/* ---------- Scale info panel (Explore → Scales) ---------- */
+
+.scale-about { margin: 0 0 10px; max-width: 72ch; }
+.scale-pattern { margin: 0 0 14px; font-variant-numeric: tabular-nums; }
+.scale-pattern span { color: var(--muted); }
+.scale-sub { margin: 14px 0 8px; font-size: .95rem; }
+.scale-sub small { color: var(--muted); font-weight: 500; font-size: .82rem; }
+.chord-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chord-chip {
+  display: inline-flex; flex-direction: column; align-items: center; min-width: 58px; padding: 6px 10px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 750;
+}
+.chord-chip small { color: var(--accent); font-weight: 700; font-size: .75rem; }
+.chord-chip:hover { background: var(--surface-2); }
+.chord-chip.is-active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.scale-links { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.scale-link {
+  display: grid; gap: 2px; padding: 9px 12px; text-align: left; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--surface); cursor: pointer;
+}
+.scale-link:hover { background: var(--surface-2); border-color: var(--accent); }
+.scale-link small { color: var(--muted); font-size: .8rem; }
+
+/* Keep the logo and all five top-bar buttons on one row on phones */
+@media (max-width: 760px) {
+  .topbar { gap: 10px 6px; }
+  .topbar .icon-btn { width: 36px; height: 36px; }
+  .tools { gap: 4px; }
+}

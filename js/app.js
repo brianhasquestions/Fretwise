@@ -79,8 +79,8 @@
     flipped: false,
     chordTypes: ['maj', 'min', '7'],
     rootInBass: true,
-    scaleTypes: ['minpent', 'majpent'],
-    pentShapes: [1, 2, 3, 4, 5],
+    scaleTypes: ['major', 'natural', 'minpent', 'majpent'],
+    pentShapes: [1, 2, 3, 4, 5, 6, 7],
     pentExtended: true,
     arpTypes: ['maj', 'min', '7', 'maj7', 'm7'],
     triadTypes: ['maj', 'min'],
@@ -102,6 +102,9 @@
   T.setTuning(settings.tuning);
   Sound.setTone(settings.tone);
   Pitch.setSensitivity(settings.micSensitivity);
+
+  // Seven-note scales added shapes 6 and 7: anyone who had every shape ticked keeps every shape.
+  if (settings.pentShapes.join() === '1,2,3,4,5') settings.pentShapes = DEFAULTS.pentShapes;
 
   const quizMax = () => Math.min(settings.maxFret, settings.frets);
 
@@ -321,23 +324,23 @@
     return svg + '</svg>';
   }
 
-  // ---------- Pentatonic & arpeggio shapes (shared by Explore and the Scale Quiz) ----------
+  // ---------- Scale & arpeggio shapes (shared by Explore and the Scale Quiz) ----------
 
   // family: 'pent' (pentatonic / blues scales) or 'arp' (arpeggios of chord types)
   const familyType = (family, id) =>
-    family === 'pent' ? T.scaleType(id) || T.scaleType('minpent') : T.chordType(id) || T.chordType('min');
+    family === 'pent' ? T.scaleType(id) || T.scaleType('major') : T.chordType(id) || T.chordType('min');
   const familyTypes = family => (family === 'pent' ? T.SCALE_TYPES : T.ARP_TYPES);
 
-  /** Pentatonics colour just the root (and blue note) so the box shape reads clearly; arpeggios colour every chord tone. */
+  /** Scales colour just the root and the notes that set them apart, so the shape reads clearly; arpeggios colour every chord tone. */
   function toneClass(family, type, semi) {
     if (family === 'arp') return ivClass(semi);
     if (semi === 0) return 'iv-r';
-    return semi === type.blue ? 'iv-x' : 'dot-note';
+    return (type.accent || []).includes(semi) ? 'iv-x' : 'dot-note';
   }
 
   function shapeLegend(family, type) {
     if (family === 'arp') return legend(LEGEND.filter(([cls]) => type.iv.some(i => ivClass(i) === cls)));
-    return legend([['iv-r', 'Root'], ['dot-note', 'Scale tone'], ...(type.blue ? [['iv-x', 'Blue note (♭5)']] : [])]);
+    return legend([['iv-r', 'Root'], ['dot-note', 'Scale tone'], ...(type.accent ? [['iv-x', type.accentName]] : [])]);
   }
 
   const shapeSuffix = family => (family === 'pent' ? '' : ' arpeggio');
@@ -349,7 +352,7 @@
 
   /** "shape 3" for the boxes, "extended shape 1" for the diagonal pentatonic patterns. */
   const shapeName = (sh, capital = false) => {
-    const name = `${sh.extended ? 'extended shape' : 'shape'} ${sh.index + 1}`;
+    const name = `${sh.nps3 ? '3-notes-per-string shape' : sh.extended ? 'extended shape' : 'shape'} ${sh.index + 1}`;
     return capital ? name[0].toUpperCase() + name.slice(1) : name;
   };
 
@@ -359,10 +362,10 @@
     return `Same notes as ${T.scaleName(T.mod(root + shift, 12), T.scaleType(id))}.`;
   }
 
-  function markTone(n, family, type, tones, { labels = 'intervals', extra = '' } = {}) {
+  function markTone(n, family, type, tones, { labels = 'intervals', extra = '', cls } = {}) {
     const t = tones.get(n.pc);
     const label = labels === 'none' ? '' : labels === 'notes' ? t.name : t.label;
-    fb.mark(n.s, n.f, { label, cls: toneClass(family, type, n.semi) + (extra ? ' ' + extra : '') });
+    fb.mark(n.s, n.f, { label, cls: (cls || toneClass(family, type, n.semi)) + (extra ? ' ' + extra : '') });
   }
 
   /** How an interval sounds: the root, then the other note, then both together. */
@@ -740,7 +743,7 @@
       prog: { id: 'pop', key: null, style: 'barre', area: 'auto', idx: 0, bpm: 84, preview: true },
       pc: 0, root: 0, type: 'maj', voicing: -1, labels: 'notes', naturals: false, octaves: false,
       free: { names: true, ring: false, song: null }, // free-play view
-      scale: { root: 9, type: 'minpent', shape: 0, layout: 'box' }, // pentatonic view ('box' or 'extended')
+      scale: { root: 0, type: 'major', shape: -1, layout: 'box', hi: null }, // scale view: layout 'box' or 'extended', hi = highlighted chord
       arp: { root: 9, type: 'min', shape: 0 },       // arpeggio view
       triad: { root: 0, type: 'maj', set: '345', inv: -1, shape: -1 }, // triad view
       interval: { semi: 4, dir: 1, s: 1, f: 3 },                       // interval view (root C3 on the A string)
@@ -924,6 +927,7 @@
     renderGallery() {
       const el = $('#gallery');
       const st = this.state;
+      if (st.view === 'scale') { this.renderScaleInfo(el); return; }
       if (st.view !== 'chord') { el.hidden = true; return; }
       if (st.chordMode === 'prog') { this.renderProgGallery(el); return; }
       const type = T.chordType(st.type) || T.chordType('maj');
@@ -972,7 +976,7 @@
     renderControls() {
       const st = this.state;
       const update = patch => { Object.assign(st, patch); this.save(); this.render(); };
-      setSubmodes([['free', 'Free play'], ['all', 'All notes'], ['note', 'One note'], ['chord', 'Chords'], ['triad', 'Triads'], ['interval', 'Intervals'], ['scale', 'Pentatonics'], ['arp', 'Arpeggios']], st.view, v => update({ view: v }));
+      setSubmodes([['free', 'Free play'], ['all', 'All notes'], ['note', 'One note'], ['chord', 'Chords'], ['triad', 'Triads'], ['interval', 'Intervals'], ['scale', 'Scales'], ['arp', 'Arpeggios']], st.view, v => update({ view: v }));
       const c = ui.controls;
       c.replaceChildren();
 
@@ -1238,12 +1242,12 @@
       ui.controls.append(legend(LEGEND.slice(0, 3)));
     },
 
-    /** The pentatonic / arpeggio view state: { family, cfg, type, shapes, shape }. */
+    /** The scale / arpeggio view state: { family, cfg, type, shapes, shape }. */
     shapeView() {
       const family = this.state.view === 'scale' ? 'pent' : 'arp';
       const cfg = this.state[this.state.view];
       const type = familyType(family, cfg.type);
-      const extended = family === 'pent' && cfg.layout === 'extended' && type.iv.length === 5;
+      const extended = family === 'pent' && cfg.layout === 'extended' && type.iv.length !== 6;
       const shapes = extended ? T.extendedShapes(cfg.root, type, settings.frets) : T.positionShapes(cfg.root, type, settings.frets);
       if (cfg.shape >= shapes.length) cfg.shape = shapes.length - 1;
       return { family, cfg, type, shapes, extended, shape: cfg.shape >= 0 ? shapes[cfg.shape] : null };
@@ -1265,19 +1269,70 @@
         set({ shape: v });
         if (v >= 0) runShape();
       };
-      ui.controls.append(
-        select('Root', range(12).map(pc => [pc, T.noteName(pc, 'both')]), cfg.root, v => set({ root: +v })),
-        select(family === 'pent' ? 'Scale' : 'Chord', familyTypes(family).map(t => [t.id, t.name]), cfg.type, v => set({ type: v })),
-        family === 'pent' && type.iv.length === 5
-          ? h('div', { class: 'segmented' }, segmented([['box', 'Boxes'], ['extended', 'Extended']], cfg.layout || 'box',
+      const pent = family === 'pent';
+      const label = name => name[0].toUpperCase() + name.slice(1);
+      const layouts = type.iv.length === 7 ? [['box', 'Positions'], ['extended', '3 notes per string']] : [['box', 'Boxes'], ['extended', 'Extended']];
+      ui.controls.append(...[
+        pent ? h('div', { class: 'segmented' }, segmented(T.SCALE_GROUPS.map(g => [g.id, g.name]), type.group,
+          g => set({ type: T.SCALE_TYPES.find(t => t.group === g).id, hi: null }))) : null,
+        select('Root', range(12).map(pc => [pc, T.noteName(pc, 'both')]), cfg.root, v => set({ root: +v, hi: null })),
+        pent
+          ? select('Scale', T.SCALE_TYPES.filter(t => t.group === type.group).map(t => [t.id, label(t.name)]), cfg.type, v => set({ type: v, hi: null }))
+          : select('Chord', familyTypes(family).map(t => [t.id, t.name]), cfg.type, v => set({ type: v })),
+        pent && type.iv.length !== 6
+          ? h('div', { class: 'segmented' }, segmented(layouts, cfg.layout || 'box',
             v => set({ layout: v, shape: v === 'extended' ? 0 : cfg.shape })))
           : null,
         select('Labels', [['notes', 'Note names'], ['intervals', 'Intervals']], st.labels, v => update({ labels: v })),
         h('div', { class: 'stepper' },
           button('◀', () => step(-1), { title: 'Previous shape' }),
-          h('span', { class: 'label' }, cfg.shape < 0 ? 'Whole neck' : `${extended ? 'Extended' : 'Shape'} ${cfg.shape + 1} of ${shapes.length}`),
+          h('span', { class: 'label' }, cfg.shape < 0 ? 'Whole neck' : `${extended ? (type.iv.length === 7 ? '3NPS' : 'Extended') : 'Shape'} ${cfg.shape + 1} of ${shapes.length}`),
           button('▶', () => step(1), { title: 'Next shape' })),
         button('Play', runShape, { cls: 'primary', title: 'Play the shape up and back down' }),
+      ].filter(Boolean));
+    },
+
+    /** About the selected scale, under the neck: its pattern, its chords, and related scales to explore. */
+    renderScaleInfo(el) {
+      const { cfg, type } = this.shapeView();
+      const info = Learn.scaleInfo[type.id] || { about: '', deeper: [] };
+      const STEP = { 1: 'H', 2: 'W', 3: 'W+H', 4: 'W+W' };
+      const gaps = type.iv.map((s, i) => (type.iv[i + 1] ?? 12) - s);
+      const triads = T.diatonicTriads(cfg.root, type);
+      const scaleLabel = name => name[0].toUpperCase() + name.slice(1);
+      const chips = triads.map((c, i) => h('button', {
+        type: 'button',
+        class: 'chord-chip' + (cfg.hi === i ? ' is-active' : ''),
+        'aria-pressed': String(cfg.hi === i),
+        title: `Hear ${c.name} and see its notes inside the scale`,
+        onclick: () => {
+          cfg.hi = cfg.hi === i ? null : i;
+          this.save();
+          this.render();
+          const v = T.findVoicings(c.root, c.type, settings.frets)[0];
+          if (v) strumShape(v.frets);
+        },
+      }, h('small', null, Progressions.numeral(c.semi, c.type.id)), c.name));
+      const links = info.deeper.map(([id, why]) => {
+        const t = T.scaleType(id);
+        return h('button', {
+          type: 'button',
+          class: 'scale-link',
+          onclick: () => { Object.assign(cfg, { type: id, hi: null }); this.save(); this.render(); },
+        }, h('b', null, scaleLabel(t.name)), h('small', null, why));
+      });
+      el.hidden = false;
+      el.replaceChildren(
+        h('div', { class: 'gallery-head' }, h('h2', null, `${T.scaleName(cfg.root, type)}`)),
+        h('p', { class: 'scale-about' }, info.about),
+        h('p', { class: 'scale-pattern' }, h('b', null, 'Pattern: '), gaps.map(g => STEP[g]).join(' '),
+          h('span', null, ` · frets between notes: ${gaps.join(' ')}`)),
+        ...(chips.length ? [
+          h('h3', { class: 'scale-sub' }, 'Chords in this scale', h('small', null, ' tap one to hear it and light up its notes')),
+          h('div', { class: 'chord-chips' }, chips),
+        ] : []),
+        h('h3', { class: 'scale-sub' }, 'Dig deeper'),
+        h('div', { class: 'scale-links' }, links),
       );
     },
 
@@ -1294,27 +1349,39 @@
         }
       }
       ui.prompt.innerHTML = `${shapeTitle(family, cfg.root, type)} ${tonesHtml(cfg.root, type)}`;
-      const rel = family === 'pent' ? ' ' + relativeNote(cfg.root, type) : '';
+      const triads = family === 'pent' ? T.diatonicTriads(cfg.root, type) : [];
+      const chord = cfg.hi != null ? triads[cfg.hi] : null;
+      const chordTones = chord ? T.toneMap(chord.root, chord.type) : null;
+      const tone = n => {
+        if (!chordTones) return { labels };
+        const t = chordTones.get(n.pc);
+        return { labels, cls: t ? ivClass(t.semi) : 'dot-note' };
+      };
+      const rel = (family === 'pent' ? ' ' + relativeNote(cfg.root, type) : '') +
+        (chord ? ` Coloured dots: the notes of ${chord.name}.` : '');
 
       if (!shape) {
-        all.forEach(n => markTone(n, family, type, tones, { labels }));
+        all.forEach(n => markTone(n, family, type, tones, tone(n)));
         ui.sub.textContent = (family === 'pent'
-          ? `Every note of the scale. Step through the ${shapes.length} shapes to learn it one box at a time.`
+          ? `Every note of the scale. Step through the ${shapes.length} shapes to learn it one position at a time.`
           : `Every chord tone on the neck. Step through the ${shapes.length} shapes to play it in one position.`) + rel;
       } else {
         const notes = shape.placements[0];
         const inShape = new Set(notes.map(n => n.s + ':' + n.f));
         // Faint dots for the rest of the neck show how neighbouring shapes connect.
         all.forEach(n => { if (!inShape.has(n.s + ':' + n.f)) fb.mark(n.s, n.f, { label: labels === 'notes' ? tones.get(n.pc).name : tones.get(n.pc).label, cls: 'dot-ghost' }); });
-        notes.forEach(n => markTone(n, family, type, tones, { labels }));
+        notes.forEach(n => markTone(n, family, type, tones, tone(n)));
         const [lo, hi] = T.fretSpan(notes);
         const start = tones.get(notes[0].pc);
         ui.sub.textContent = `${shapeName(shape, true)} · frets ${lo}–${hi} · starts on the ${T.degreeName(start.label)} (${start.name}) on the ${T.STRING_LONG[0]} string.` +
-          (shape.extended ? ` ${shape.counts.join('-')} notes per string — slide up a position on each 3-note string.` : '') +
+          (shape.nps3 ? ' Three notes on every string, so the fingering stays the same as you cross strings.'
+            : shape.extended ? ` ${shape.counts.join('-')} notes per string — slide up a position on each 3-note string.` : '') +
           (shape.truncated ? ' The top runs past the end of this neck; add frets in Settings to see it all.' : '') + rel;
         fb.scrollToFret(lo);
       }
-      ui.controls.append(shapeLegend(family, type));
+      ui.controls.append(chord
+        ? legend([['iv-r', `${chord.name} root`], ['iv-3', '3rd'], ['iv-5', '5th'], ['dot-note', 'Other scale notes']])
+        : shapeLegend(family, type));
     },
 
     draw() {
@@ -2760,7 +2827,7 @@
     statKey() { return `shapes:${this.family}:${this.sub}`; },
 
     enter() {
-      setSubmodes([['pent', 'Pentatonics'], ['arp', 'Arpeggios']], this.family, v => {
+      setSubmodes([['pent', 'Scales'], ['arp', 'Arpeggios']], this.family, v => {
         this.family = v;
         store.set('fw.shapes.family', v);
         this.enter();
@@ -2771,7 +2838,7 @@
     types() {
       const ids = this.family === 'pent' ? settings.scaleTypes : settings.arpTypes;
       const ts = ids.map(id => (this.family === 'pent' ? T.scaleType(id) : T.ARP_TYPES.find(t => t.id === id))).filter(Boolean);
-      return ts.length ? ts : [familyType(this.family, this.family === 'pent' ? 'minpent' : 'min')];
+      return ts.length ? ts : [familyType(this.family, this.family === 'pent' ? 'major' : 'min')];
     },
 
     pickItem() {
@@ -2781,13 +2848,15 @@
         for (let root = 0; root < 12; root++) {
           const extra = this.family === 'pent' && settings.pentExtended ? T.extendedShapes(root, type, settings.frets).filter(sh => !sh.truncated) : [];
           for (const sh of [...T.positionShapes(root, type, settings.frets), ...extra]) {
-            if (allowed && !sh.extended && !allowed.includes(sh.index + 1)) continue;
             items.push({ type, root, sh, key: `${this.family}-${this.sub}:${type.id}:${root}:${sh.extended ? 'x' : ''}${sh.index}` });
           }
         }
       }
-      let pool = items.filter(i => i.key !== this.last);
-      if (!pool.length) pool = items;
+      // Keep to the ticked shapes when any exist for these scales (shapes 6-7 only exist on seven-note scales).
+      const ticked = items.filter(i => !allowed || i.sh.extended || allowed.includes(i.sh.index + 1));
+      const usable = ticked.length ? ticked : items;
+      let pool = usable.filter(i => i.key !== this.last);
+      if (!pool.length) pool = usable;
       const it = weightedPick(pool, i => weightOf(i.key));
       this.last = it.key;
       return it;
@@ -3206,7 +3275,7 @@
   const GROUPS = [
     { name: 'chordType', key: 'chordTypes', el: '#chord-checks', options: T.CHORD_TYPES.map(t => [t.id, t.name]) },
     { name: 'scaleType', key: 'scaleTypes', el: '#scale-checks', options: T.SCALE_TYPES.map(t => [t.id, t.name]) },
-    { name: 'pentShape', key: 'pentShapes', el: '#shape-checks', options: [1, 2, 3, 4, 5].map(n => [n, String(n)]), numeric: true },
+    { name: 'pentShape', key: 'pentShapes', el: '#shape-checks', options: [1, 2, 3, 4, 5, 6, 7].map(n => [n, String(n)]), numeric: true },
     { name: 'arpType', key: 'arpTypes', el: '#arp-checks', options: T.ARP_TYPES.map(t => [t.id, t.name]) },
     { name: 'triadType', key: 'triadTypes', el: '#triad-type-checks', options: T.TRIAD_TYPES.map(t => [t.id, t.name]) },
     { name: 'triadSet', key: 'triadSets', el: '#triad-set-checks', options: T.STRING_SETS.map(x => [x.id, `Strings ${x.label}`]) },

@@ -18,14 +18,15 @@ browser, so it works offline.
 - **Notes** — every note on the neck, or every place one note lives.
 - **Chords** — every playable shape of a chord as chord diagrams, plus **Progressions**: 16 progressions (pop, jazz,
   neo-soul, minor and more) voiced with movable shapes and smooth voice leading, in barre, 4-string or triad styles.
-- **Triads**, **Intervals** (with an interval map around any root), **Pentatonics** (the five boxes and the extended
-  diagonal shapes) and **Arpeggios**.
+- **Triads**, **Intervals** (with an interval map around any root), **Scales** (start with the major scale, then go deeper into
+  natural minor, pentatonics and blues, the modes, and harmonic and melodic minor, with position, 3-notes-per-string and
+  extended shapes, and each scale's chords) and **Arpeggios**.
 - An expandable explanation of each concept under the neck, with examples you can hear.
 
 **Quizzes** — each with scores, streaks and timing, and more practice on what you get wrong
 - **Note Quiz** — find a note on a string, name a note, or find every instance of a note.
 - **Chord Quiz** — build a chord or a triad (in a given inversion) on the neck, or name one.
-- **Scale Quiz** — play a pentatonic or arpeggio shape, or name the degree of a note in it.
+- **Scale Quiz** — play a scale or arpeggio shape, or name the degree of a note in it.
 - **Intervals** — find or name intervals on the neck.
 - **Ear Training** — find a note by ear, play back short phrases, and recognise intervals and chord qualities.
 

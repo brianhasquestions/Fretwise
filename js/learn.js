@@ -137,24 +137,33 @@ const Learn = (() => {
       },
 
       scale: {
-        title: 'Pentatonic scales',
+        title: 'What a scale is',
         html: `
-          <p>A <b>scale</b> is a set of notes to build melodies from. A <b>pentatonic</b> scale has just <b>five</b> notes per octave —
-          it leaves out the two notes that most easily clash, so it's very hard to play a “wrong” note. It's the backbone of blues,
-          rock and country soloing.</p>
+          <p>A <b>scale</b> is a set of notes to build melodies and chords from. Start with the <b>major scale</b>: it's the reference
+          point for almost everything else in Western music. ${play('scale:0:major', 'C major')}</p>
           <ul>
-            <li><b>Minor pentatonic</b>: R ♭3 4 5 ♭7. ${play('scale:9:minpent', 'A minor pentatonic')}</li>
-            <li><b>Major pentatonic</b>: R 2 3 5 6. ${play('scale:0:majpent', 'C major pentatonic')}</li>
-            <li><b>Relatives</b>: A minor pentatonic and C major pentatonic use the <b>same five notes</b>. What changes is which note
-            feels like home — the root you start and end phrases on.</li>
-            <li><b>Blues scale</b>: the minor pentatonic plus the ♭5 “blue note”, usually passed through on the way to the 4th or 5th.
-            ${play('scale:9:blues', 'A blues')}</li>
+            <li><b>Its pattern</b> is whole, whole, half, whole, whole, whole, half: 2 2 1 2 2 2 1 frets. Play it along one string from
+            any note and it comes out right.</li>
+            <li><b>Other scales are described by how they differ from it.</b> A ♭3 is the major scale's 3rd lowered one fret; the natural
+            minor is R 2 ♭3 4 5 ♭6 ♭7. ${play('scale:9:natural', 'A natural minor')}</li>
+            <li><b>Chords come from scales.</b> Stack every other note, starting on each note of the scale, and you get that scale's chords.
+            That's why these notes sound right over them: tap a chord in the panel above to see its notes inside the scale.</li>
           </ul>
-          <p>The <b>five shapes</b> (boxes) cover the whole neck and link together: the top of one box is the bottom of the next.
-          The faint dots show the neighbouring boxes. Learn shape 1 first, then add the shapes on either side of it.</p>
-          <p><b>Extended shapes</b> (switch <i>Boxes</i> to <i>Extended</i>) cut diagonally across the boxes: they alternate two and
-          three notes per string, and on each three-note string your hand slides up a position. In A minor that's
-          3-5 | 3-5-7 | 5-7 | 5-7-9 | 8-10 | 8-10-12 — two octaves and more in one sweep, which is how players travel the neck in a solo.</p>`,
+          <p><b>Where to go next</b></p>
+          <ul>
+            <li><b>Pentatonics</b> keep just five notes, leaving out the two that clash most easily, so it's very hard to play a “wrong” note.
+            They're the backbone of blues, rock and country soloing. ${play('scale:9:minpent', 'A minor pentatonic')}
+            The <b>blues scale</b> adds the ♭5 “blue note”. ${play('scale:9:blues', 'A blues')}</li>
+            <li><b>Modes</b> are the major scale's notes with a different note as home, and each has its own mood.
+            D to D using C major's notes is D Dorian. ${play('scale:2:dorian', 'D Dorian')}</li>
+            <li><b>Harmonic and melodic minor</b> raise notes of the natural minor to pull harder toward home. ${play('scale:9:harmonic', 'A harmonic minor')}</li>
+          </ul>
+          <p><b>Relatives</b> share the same notes: A minor and C major, or A minor pentatonic and C major pentatonic.
+          What changes is which note feels like home — the one you start and end phrases on, and the chords underneath.</p>
+          <p><b>Shapes.</b> <i>Positions</i> and <i>Boxes</i> keep your hand in one area, and the faint dots show the neighbouring shapes.
+          Learn one, then add the shapes on either side. <i>3 notes per string</i> uses the same three-note groups all the way across, which
+          suits fast, even picking. Pentatonic <i>Extended</i> shapes cut diagonally across the boxes, alternating two and three notes per
+          string: in A minor, 3-5 | 3-5-7 | 5-7 | 5-7-9 | 8-10 | 8-10-12, which is how players travel the neck in a solo.</p>`,
       },
 
       arp: {
@@ -175,5 +184,104 @@ const Learn = (() => {
     };
   }
 
-  return { sections };
+  // About each scale, for the panel under the neck. deeper: [scale id, how it relates to this one].
+  const scaleInfo = {
+    major: {
+      about: 'The reference point for Western music: bright, settled and familiar. Do-re-mi is this scale, and every other scale is described by how it differs from it. Also called the Ionian mode.',
+      deeper: [
+        ['natural', 'Its darker relative: lower the 3rd, 6th and 7th'],
+        ['majpent', 'Drop the 4th and 7th for an easy, open sound'],
+        ['mixolydian', 'Lower the 7th for a bluesy rock feel'],
+        ['lydian', 'Raise the 4th for a dreamy, floating feel'],
+      ],
+    },
+    natural: {
+      about: 'The standard minor sound: darker and more serious than major, heard all over rock, pop ballads and metal. It uses the same notes as the major scale three frets up, with a different home. Also called the Aeolian mode.',
+      deeper: [
+        ['minpent', 'Drop the 2nd and ♭6 for the classic soloing scale'],
+        ['dorian', 'Raise the 6th for a warmer, jazzier minor'],
+        ['harmonic', 'Raise the 7th for a dramatic pull home'],
+        ['phrygian', 'Lower the 2nd for a dark, Spanish colour'],
+      ],
+    },
+    minpent: {
+      about: 'Five notes, no clashes: the first scale most guitarists learn to solo with, and the sound of blues and rock lead guitar. It is the natural minor without the 2nd and ♭6.',
+      deeper: [
+        ['blues', 'Add the ♭5 for instant blues'],
+        ['natural', 'Add the two missing notes for the full minor scale'],
+        ['dorian', 'Add the 2nd and 6th for a jazzier minor'],
+      ],
+    },
+    majpent: {
+      about: 'Sweet and open: country licks, soul and melodic rock. It is the major scale without the 4th and 7th, the two notes most likely to clash with the chords.',
+      deeper: [
+        ['major', 'Add the 4th and 7th for the full major scale'],
+        ['minpent', 'Same notes from another root: its relative minor'],
+        ['mixolydian', 'Add the 4th and ♭7 for a bluesier major'],
+      ],
+    },
+    blues: {
+      about: 'The minor pentatonic plus the ♭5 “blue note”. The ♭5 is tense, so it usually works best as a passing note on the way to the 4th or 5th rather than somewhere to rest.',
+      deeper: [
+        ['minpent', 'Take the blue note out again'],
+        ['mixolydian', 'The major side of the blues'],
+        ['dorian', 'The smoother, jazzier side of minor blues'],
+      ],
+    },
+    dorian: {
+      about: 'A minor scale with a raised 6th, which makes it warmer and less gloomy than natural minor. Think Santana, funk vamps and modal jazz. Same notes as the major scale a whole step below.',
+      deeper: [
+        ['natural', 'Lower the 6th for plain minor'],
+        ['mixolydian', 'Raise the 3rd for its major-side cousin'],
+        ['melodic', 'Raise the 7th as well'],
+      ],
+    },
+    phrygian: {
+      about: 'A minor scale with a ♭2, the note that gives it its dark, Spanish sound. Common in flamenco-flavoured playing and metal riffs. Same notes as the major scale a major 3rd below.',
+      deeper: [
+        ['natural', 'Raise the 2nd for plain minor'],
+        ['locrian', 'Lower the 5th as well for the darkest mode'],
+        ['harmonic', 'Its fifth mode is the “Phrygian dominant” sound'],
+      ],
+    },
+    lydian: {
+      about: 'A major scale with a raised 4th: bright, floating and a little unreal. Often used in film music and by players like Joe Satriani. Same notes as the major scale a perfect 4th below.',
+      deeper: [
+        ['major', 'Lower the 4th for plain major'],
+        ['mixolydian', 'The other major mode, with a ♭7 instead'],
+      ],
+    },
+    mixolydian: {
+      about: 'A major scale with a ♭7: confident and bluesy, the sound of a lot of classic rock and of soloing over dominant 7th chords. Same notes as the major scale a perfect 5th below.',
+      deeper: [
+        ['major', 'Raise the 7th for plain major'],
+        ['blues', 'Mix it with the blues scale over a 12-bar'],
+        ['dorian', 'Lower the 3rd for the minor-side cousin'],
+      ],
+    },
+    locrian: {
+      about: 'The darkest mode: a ♭2 and a ♭5 mean its home chord is diminished, so it never feels settled. It is rarely used as a home key, but it fits over m7♭5 chords and turns up in some metal.',
+      deeper: [
+        ['phrygian', 'Raise the 5th for a more stable dark sound'],
+        ['natural', 'Raise the 2nd and 5th for plain minor'],
+      ],
+    },
+    harmonic: {
+      about: 'Natural minor with a raised 7th. That note gives the scale a major V chord and a strong pull home, and the three-fret gap below it sounds exotic. Heard from Bach to neoclassical shred.',
+      deeper: [
+        ['natural', 'Lower the 7th again'],
+        ['melodic', 'Raise the 6th too and the gap disappears'],
+        ['phrygian', 'Another dark sound with a ♭2'],
+      ],
+    },
+    melodic: {
+      about: 'Natural minor with a raised 6th and 7th: smooth and sophisticated, a minor 3rd over an otherwise major scale. This is the jazz form, the same going up and down; in classical music the raised notes usually fall back on the way down.',
+      deeper: [
+        ['harmonic', 'Lower the 6th for a more dramatic sound'],
+        ['dorian', 'Lower the 7th for the modal version'],
+      ],
+    },
+  };
+
+  return { sections, scaleInfo };
 })();
